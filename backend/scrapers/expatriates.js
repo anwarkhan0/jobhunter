@@ -15,7 +15,7 @@ module.exports = async () => {
   const browser = await chromium.launch({ headless: true });
   let allJobs = [];
 
-  for (let pageNo = 1; pageNo <= 50; pageNo++) {
+  for (let pageNo = 1; pageNo <= 1; pageNo++) {
     const url = `https://www.expatriates.com/scripts/search/search.epl?page=${pageNo}&q=&category_id=50&region_name=Saudi+Arabia&region_id=49&ads=1`;
 
     // Set a random user agent for each request

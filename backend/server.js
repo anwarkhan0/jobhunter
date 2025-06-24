@@ -2,8 +2,10 @@ const express = require('express');
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors'); // <-- Add this line
 
 const app = express();
+app.use(cors()); // <-- Add this line
 app.use(express.json());
 
 const jobs = {}; // In-memory job storage
@@ -21,6 +23,7 @@ const getScraperForWebsite = (url) => {
 
 // Endpoint to accept website URLs and scrape them
 app.post('/scrape', async (req, res) => {
+  console.log('Received scrape request:', req.body);
   const { websites } = req.body;
   const jobId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
   jobs[jobId] = { status: 'pending', result: null };
@@ -64,7 +67,7 @@ app.get('/results/:jobId', (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -1,6 +1,3 @@
-Here’s a short README file for your project:
-
----
 
 # job hunter
 

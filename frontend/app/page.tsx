@@ -28,11 +28,7 @@ interface JobSite {
 }
 
 const availableSites = [
-  { id: "indeed", name: "Indeed", domain: "indeed.com" },
-  { id: "linkedin", name: "LinkedIn", domain: "linkedin.com" },
-  { id: "glassdoor", name: "Glassdoor", domain: "glassdoor.com" },
-  { id: "monster", name: "Monster", domain: "monster.com" },
-  { id: "ziprecruiter", name: "ZipRecruiter", domain: "ziprecruiter.com" },
+  { id: "expatriates", name: "Expatriates", domain: "https://www.expatriates.com" },
 ]
 
 export default function JobSearchApp() {
@@ -41,6 +37,8 @@ export default function JobSearchApp() {
   const [results, setResults] = useState<JobSite[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [total, setTotal] = useState(1)
 
   const handleSiteToggle = (siteId: string) => {
     setSelectedSites((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]))
@@ -56,40 +54,67 @@ export default function JobSearchApp() {
       return
     }
 
-    if (!searchQuery.trim()) {
-      toast({
-        title: "No search query",
-        description: "Please enter a job title or keyword to search.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsLoading(true)
     setHasSearched(true)
+    setProgress(0)
+    setTotal(selectedSites.length)
 
     try {
-      const response = await fetch("/api/jobs/search", {
+      // 1. Start the scrape job
+      const response = await fetch("http://localhost:3001/scrape", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sites: selectedSites,
+          websites: selectedSites.map((siteId) => {
+            // Map siteId to actual domain/url if needed
+            if (siteId === "expatriates") return "https://www.expatriates.com"
+            // Add more mappings as needed
+            return siteId
+          }),
           query: searchQuery,
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch jobs")
+      if (!response.ok) throw new Error("Failed to start job")
+
+      const { jobId } = await response.json()
+
+      // 2. Poll for results (no poll limit)
+      let jobResult = null
+      while (true) {
+        const res = await fetch(`http://localhost:3001/results/${jobId}`)
+        const data = await res.json()
+        setProgress(data.progress || 0)
+        setTotal(data.total || 1)
+        if (data.status === "done") {
+          jobResult = data.result
+          break
+        }
+        await new Promise((r) => setTimeout(r, 1000)) // Wait 1s
       }
 
-      const data = await response.json()
-      setResults(data.results)
+      if (!jobResult) throw new Error("Timed out waiting for results")
 
+      // Map backend structure to JobSite structure expected by frontend
+      const mappedResults = jobResult.map(site => ({
+        id: site.website, // or extract a unique id if needed
+        name: site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].charAt(0).toUpperCase() + site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].slice(1),
+        domain: site.website,
+        jobs: Array.isArray(site.data) ? site.data.map((job, idx) => ({
+          id: job.id || `${site.website}-${idx}`,
+          title: job.title,
+          description: job.description,
+          link: job.link,
+          company: job.company || "",
+          location: job.location || "",
+          salary: job.salary || "",
+        })) : [],
+      }));
+
+      setResults(mappedResults)
       toast({
         title: "Search completed",
-        description: `Found jobs from ${data.results.length} sites.`,
+        description: `Found jobs from ${mappedResults.length} sites.`,
       })
     } catch (error) {
       console.error("Search error:", error)
@@ -172,7 +197,9 @@ export default function JobSearchApp() {
     }
   }
 
-  const totalJobs = results.reduce((sum, site) => sum + site.jobs.length, 0)
+  const totalJobs = Array.isArray(results)
+    ? results.reduce((sum, site) => sum + (Array.isArray(site.jobs) ? site.jobs.length : 0), 0)
+    : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -237,6 +264,19 @@ export default function JobSearchApp() {
           </CardContent>
         </Card>
 
+        {/* Progress Bar */}
+        {isLoading && (
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
+            <div
+              className="bg-blue-600 h-4 rounded-full transition-all"
+              style={{ width: `${Math.round((progress / total) * 100)}%` }}
+            />
+            <div className="text-center text-xs mt-1">
+              {progress} of {total} sites scraped...
+            </div>
+          </div>
+        )}
+
         {/* Results Section */}
         {hasSearched && (
           <Card>
@@ -283,7 +323,7 @@ export default function JobSearchApp() {
                       {/* Site Header */}
                       <div className="flex items-center gap-3 mb-4">
                         <h2 className="text-xl font-semibold text-gray-900">{site.name}</h2>
-                        <Badge variant="outline">{site.jobs.length} jobs</Badge>
+                        <Badge variant="outline">{Array.isArray(site.jobs) ? site.jobs.length : 0} jobs</Badge>
                         <span className="text-sm text-gray-500">({site.domain})</span>
                       </div>
 
