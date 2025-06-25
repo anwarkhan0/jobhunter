@@ -30,6 +30,7 @@ interface JobSite {
 const availableSites = [
   { id: "expatriates", name: "Expatriates", domain: "https://www.expatriates.com" },
   { id: "mourjan", name: "Mourjan", domain: "https://www.mourjan.com/" },
+  { id: "bayt", name: "Bayt", domain: "https://www.bayt.com/" },
 ]
 
 const timeFilters = [
@@ -75,8 +76,9 @@ export default function JobSearchApp() {
         body: JSON.stringify({
           websites: selectedSites.map((siteId) => {
             // Map siteId to actual domain/url if needed
-            if (siteId === "expatriates") return "https://www.expatriates.com"
-            if (siteId === "mourjan") return "https://www.mourjan.com/"
+            if (siteId === "expatriates") return "https://www.expatriates.com";
+            if (siteId === "mourjan") return "https://www.mourjan.com/";
+            if (siteId === "bayt") return "https://www.bayt.com/"
             // Add more mappings as needed
             return siteId
           }),
