@@ -23,8 +23,7 @@ const getScraperForWebsite = (url) => {
 
 // Endpoint to accept website URLs and scrape them
 app.post('/scrape', async (req, res) => {
-  console.log('Received scrape request:', req.body);
-  const { websites } = req.body;
+  const { websites, time } = req.body;
   const jobId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
   jobs[jobId] = { status: 'pending', result: null };
 
@@ -37,22 +36,19 @@ app.post('/scrape', async (req, res) => {
         
         // Dynamically load the correct scraper based on the website
         const scraper = getScraperForWebsite(website);
+       
         
-        // Launch browser and scrape the data
-        const browser = await chromium.launch({ headless: true });
-        const page = await browser.newPage();
-        await page.goto(website);
-        
-        const data = await scraper(page);
+        const data = await scraper(time);
         scrapedData.push({ website, data });
-        
-        await browser.close();
+        jobs[jobId].result = scrapedData.slice(); // <-- update partial result
+        jobs[jobId].progress = scrapedData.length;
+
       } catch (error) {
         console.error(`Error scraping ${website}:`, error);
         scrapedData.push({ website, error: error.message });
       }
     }
-    jobs[jobId] = { status: 'done', result: scrapedData };
+    jobs[jobId].status = 'done';
   })();
 
   res.json({ jobId });

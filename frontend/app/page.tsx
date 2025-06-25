@@ -29,6 +29,13 @@ interface JobSite {
 
 const availableSites = [
   { id: "expatriates", name: "Expatriates", domain: "https://www.expatriates.com" },
+  { id: "mourjan", name: "Mourjan", domain: "https://www.mourjan.com/" },
+]
+
+const timeFilters = [
+  { label: "Any time", value: "" },
+  { label: "Last 24 hours", value: "24h" },
+  { label: "Last 7 days", value: "7d" },
 ]
 
 export default function JobSearchApp() {
@@ -39,6 +46,7 @@ export default function JobSearchApp() {
   const [hasSearched, setHasSearched] = useState(false)
   const [progress, setProgress] = useState(0)
   const [total, setTotal] = useState(1)
+  const [timeFilter, setTimeFilter] = useState<string>("")
 
   const handleSiteToggle = (siteId: string) => {
     setSelectedSites((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]))
@@ -68,10 +76,12 @@ export default function JobSearchApp() {
           websites: selectedSites.map((siteId) => {
             // Map siteId to actual domain/url if needed
             if (siteId === "expatriates") return "https://www.expatriates.com"
+            if (siteId === "mourjan") return "https://www.mourjan.com/"
             // Add more mappings as needed
             return siteId
           }),
           query: searchQuery,
+          time: timeFilter, // <-- send time filter to backend
         }),
       })
 
@@ -96,11 +106,11 @@ export default function JobSearchApp() {
       if (!jobResult) throw new Error("Timed out waiting for results")
 
       // Map backend structure to JobSite structure expected by frontend
-      const mappedResults = jobResult.map(site => ({
+      const mappedResults = jobResult.map((site: any) => ({
         id: site.website, // or extract a unique id if needed
         name: site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].charAt(0).toUpperCase() + site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].slice(1),
         domain: site.website,
-        jobs: Array.isArray(site.data) ? site.data.map((job, idx) => ({
+        jobs: Array.isArray(site.data) ? site.data.map((job: any, idx: number) => ({
           id: job.id || `${site.website}-${idx}`,
           title: job.title,
           description: job.description,
@@ -206,7 +216,7 @@ export default function JobSearchApp() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Search Aggregator</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Hunt With One Shot</h1>
           <p className="text-lg text-gray-600">Search multiple job sites at once and download results</p>
         </div>
 
@@ -261,6 +271,24 @@ export default function JobSearchApp() {
                 {isLoading ? "Searching..." : "Search"}
               </Button>
             </div>
+
+            {/* Time Filter */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Time Filter</h3>
+              <div className="flex gap-2">
+                {timeFilters.map((filter) => (
+                  <Button
+                    key={filter.value}
+                    variant={timeFilter === filter.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTimeFilter(filter.value)}
+                    className="flex-1"
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -306,7 +334,7 @@ export default function JobSearchApp() {
               </div>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {results.length === 0 && isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
                   <span className="ml-3 text-gray-600">Searching job sites...</span>
@@ -325,8 +353,10 @@ export default function JobSearchApp() {
                         <h2 className="text-xl font-semibold text-gray-900">{site.name}</h2>
                         <Badge variant="outline">{Array.isArray(site.jobs) ? site.jobs.length : 0} jobs</Badge>
                         <span className="text-sm text-gray-500">({site.domain})</span>
+                        {isLoading && site.jobs.length === 0 && (
+                          <span className="ml-2 text-xs text-blue-500 animate-pulse">Loading...</span>
+                        )}
                       </div>
-
                       {/* Jobs List */}
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {site.jobs.map((job) => (
@@ -351,7 +381,6 @@ export default function JobSearchApp() {
                           </Card>
                         ))}
                       </div>
-
                       {index < results.length - 1 && <Separator className="mt-8" />}
                     </div>
                   ))}

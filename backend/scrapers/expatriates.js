@@ -11,7 +11,22 @@ function randomDelay(min = 2000, max = 6000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-module.exports = async () => {
+// Helper to check if a date is within the time filter
+function isWithinTimeframe(postTime, time) {
+  if (!time) return true;
+  const now = new Date();
+  const postDate = new Date(postTime);
+  if (isNaN(postDate.getTime())) return false;
+  if (time === "24h") {
+    return (now - postDate) <= 24 * 60 * 60 * 1000;
+  }
+  if (time === "7d") {
+    return (now - postDate) <= 7 * 24 * 60 * 60 * 1000;
+  }
+  return true;
+}
+
+module.exports = async (time) => {
   const browser = await chromium.launch({ headless: true });
   let allJobs = [];
 
@@ -63,8 +78,11 @@ module.exports = async () => {
       return jobItems;
     });
 
-    allJobs = allJobs.concat(jobs);
-    console.log(`Page ${pageNo}: Collected ${jobs.length} jobs`);
+    // Filter jobs by time
+    const filteredJobs = jobs.filter(job => isWithinTimeframe(job.postTime, time));
+
+    allJobs = allJobs.concat(filteredJobs);
+    console.log(`Page ${pageNo}: Collected ${filteredJobs.length} jobs after filtering`);
 
     await context.close();
     await new Promise(r => setTimeout(r, randomDelay(2000, 5000)));
