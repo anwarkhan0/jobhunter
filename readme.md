@@ -1,7 +1,7 @@
 
-# job hunter
+# My Job Hunt in saudi arab
 
-This repository contains both the backend and frontend of a web application. The backend is built with **Node.js** and the frontend is built with **React.js**.
+This repository contains both the backend and frontend of a web application which scrapes jobs from different sites. The backend is built with **Node.js** and the frontend is built with **React.js** || Nextjs.
 
 ## Folder Structure
 
@@ -29,6 +29,7 @@ This repository contains both the backend and frontend of a web application. The
    ```bash
    cd backend
    npm install
+   npx playwright
    # or if using yarn
    yarn install
    ```
@@ -62,21 +63,11 @@ This repository contains both the backend and frontend of a web application. The
    yarn start
    ```
 
-Visit `http://localhost:3000` to view the React app and `http://localhost:5000` (or the port set in the backend) to interact with the Node.js API.
+Visit `http://localhost:3000` to view the React app and `http://localhost:3001` (or the port set in the backend) to interact with the Node.js API.
 
-## Environment Variables
-
-You can set the following environment variables for both the frontend and backend:
-
-* **Backend**: Create a `.env` file in the `/backend` folder.
-* **Frontend**: Create a `.env` file in the `/frontend` folder.
-
-Refer to `.env.example` files for variable examples (if available).
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
-
-This README provides an overview of the project structure and how to set up the backend and frontend environments.
+cheers!

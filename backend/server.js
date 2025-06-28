@@ -24,6 +24,9 @@ const getScraperForWebsite = (url) => {
   if (url.includes('naukrigulf.com')) {
     return require('./scrapers/naukarigulf');
   }
+  if (url.includes('gulftalent.com')) {
+    return require('./scrapers/gulftalent');
+  }
   throw new Error('No scraper found for this website');
 };
 
@@ -64,8 +67,12 @@ app.post('/scrape', async (req, res) => {
 app.get('/results/:jobId', (req, res) => {
   const job = jobs[req.params.jobId];
   if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (job.status === 'pending') return res.json({ status: 'pending' });
-  res.json({ status: 'done', result: job.result });
+  res.json({
+    status: job.status,
+    result: job.result,
+    progress: job.progress || 0,
+    total: job.result ? job.result.length : 0
+  });
 });
 
 // Start the server
