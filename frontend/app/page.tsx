@@ -31,6 +31,8 @@ const availableSites = [
   { id: "expatriates", name: "Expatriates", domain: "https://www.expatriates.com" },
   { id: "mourjan", name: "Mourjan", domain: "https://www.mourjan.com/" },
   { id: "bayt", name: "Bayt", domain: "https://www.bayt.com/" },
+  { id: "naukarigulf", name: "NaukariGulf", domain: "https://www.naukrigulf.com/" },
+  { id: "gulftalent", name: "Gulftalent", domain: "https://www.gulftalent.com/" },
 ]
 
 const timeFilters = [
@@ -78,7 +80,9 @@ export default function JobSearchApp() {
             // Map siteId to actual domain/url if needed
             if (siteId === "expatriates") return "https://www.expatriates.com";
             if (siteId === "mourjan") return "https://www.mourjan.com/";
-            if (siteId === "bayt") return "https://www.bayt.com/"
+            if (siteId === "bayt") return "https://www.bayt.com/";
+            if (siteId === "naukarigulf") return "https://www.naukrigulf.com/";
+            if (siteId === "gulftalent") return "https://www.gulftalent.com/";
             // Add more mappings as needed
             return siteId
           }),
@@ -92,23 +96,41 @@ export default function JobSearchApp() {
       const { jobId } = await response.json()
 
       // 2. Poll for results (no poll limit)
-      let jobResult = null
+      let lastResult = []
       while (true) {
         const res = await fetch(`http://localhost:3001/results/${jobId}`)
         const data = await res.json()
         setProgress(data.progress || 0)
-        setTotal(data.total || 1)
-        if (data.status === "done") {
-          jobResult = data.result
-          break
+        setTotal(data.total || selectedSites.length)
+
+        // Always update results if available
+        if (Array.isArray(data.result)) {
+          lastResult = data.result
+          const mappedResults = lastResult.map((site: any) => ({
+            id: site.website,
+            name: site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].charAt(0).toUpperCase() + site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].slice(1),
+            domain: site.website,
+            jobs: Array.isArray(site.data) ? site.data.map((job: any, idx: number) => ({
+              id: job.id || `${site.website}-${idx}`,
+              title: job.title,
+              description: job.description,
+              link: job.link,
+              company: job.company || "",
+              location: job.location || "",
+              salary: job.salary || "",
+            })) : [],
+          }));
+          setResults(mappedResults)
         }
-        await new Promise((r) => setTimeout(r, 1000)) // Wait 1s
+
+        if (data.status === "done") break
+        await new Promise((r) => setTimeout(r, 10))
       }
 
-      if (!jobResult) throw new Error("Timed out waiting for results")
+      if (!lastResult) throw new Error("Timed out waiting for results")
 
       // Map backend structure to JobSite structure expected by frontend
-      const mappedResults = jobResult.map((site: any) => ({
+      const mappedResults = lastResult.map((site: any) => ({
         id: site.website, // or extract a unique id if needed
         name: site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].charAt(0).toUpperCase() + site.website.replace(/^https?:\/\/(www\.)?/, '').split('.')[0].slice(1),
         domain: site.website,
@@ -218,7 +240,7 @@ export default function JobSearchApp() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Hunt With One Shot</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Job Hunt in Saudi Arabia</h1>
           <p className="text-lg text-gray-600">Search multiple job sites at once and download results</p>
         </div>
 

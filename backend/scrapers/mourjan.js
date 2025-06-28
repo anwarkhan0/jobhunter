@@ -6,6 +6,15 @@ const USER_AGENTS = [
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
 ];
 
+const CATEGORIES = [
+  "secreterial", "accounting", "sales-and-marketing", "tourist-and-restaurants", "designer", "teaching",
+  "differ-jobs", "engineering", "programming", "fine-arts", "beauty-care", "drivers", "labors", "technicians",
+  "medicine-and-nursing", "law", "human-resources", "partnership", "web-designers", "information-technology",
+  "customer-service", "translators", "fitness", "landscaping", "fashion", "editorial", "administration",
+  "public-relations", "ticketing", "guards", "housemaids", "cleaning-workers", "child-care", "delivery",
+  "audio-visual", "ac-technicians", "tailors", "construction", "employee", "data-entry", "craftsmen"
+];
+
 function randomDelay(min = 2000, max = 6000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -57,76 +66,79 @@ module.exports = async (time) => {
   const browser = await chromium.launch({ headless: true });
   let allJobs = [];
 
-  for (let pageNo = 1; pageNo <= 1; pageNo++) {
-    const url = `https://www.mourjan.com/sa/data-entry/vacancies/en/${pageNo}/`;
+  for (const category of CATEGORIES) {
+    for (let pageNo = 1; pageNo <= 1; pageNo++) { // Increase pageNo if you want more pages per category
+      const url = `https://www.mourjan.com/sa/${category}/vacancies/en/${pageNo}/`;
 
-    const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-    const context = await browser.newContext({
-      userAgent,
-      locale: 'en-US'
-    });
-    const page = await context.newPage();
-
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-    });
-
-    try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      await page.waitForTimeout(randomDelay(2000, 5000));
-      await page.waitForSelector('.ad', { timeout: 10000 });
-    } catch (e) {
-      console.error(`Failed to load or parse page ${pageNo}: ${e.message}`);
-      await context.close();
-      continue;
-    }
-
-    const jobs = await page.evaluate(() => {
-      const jobItems = [];
-      const ads = document.querySelectorAll('.ad');
-      ads.forEach(ad => {
-        const linkEl = ad.querySelector('a.link');
-        const link = linkEl ? 'https://www.mourjan.com' + linkEl.getAttribute('href') : '';
-
-        const contentEl = ad.querySelector('.content');
-        const description = contentEl ? contentEl.innerText.trim() : '';
-
-        // Title: first sentence or up to first period, or first 50 chars as fallback
-        let title = '';
-        if (description) {
-          const match = description.match(/^.*?[.!\n]/);
-          title = match ? match[0].trim() : description.slice(0, 50);
-        }
-
-        // Posting time: last div inside .box.hint
-        let postingTime = '';
-        const hintBox = ad.querySelector('.box.hint');
-        if (hintBox) {
-          const hintDivs = hintBox.querySelectorAll('div');
-          if (hintDivs.length > 1) {
-            postingTime = hintDivs[hintDivs.length - 1].innerText.trim();
-          }
-        }
-
-        jobItems.push({
-          title,
-          postingTime,
-          description,
-          link
-        });
+      const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+      const context = await browser.newContext({
+        userAgent,
+        locale: 'en-US'
       });
-      return jobItems;
-    });
+      const page = await context.newPage();
 
-    // Filter jobs by time using the parsed postingTime
-    const filteredJobs = jobs.filter(job => isWithinTimeframe(job.postingTime, time));
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+      });
 
-    allJobs = allJobs.concat(filteredJobs);
-    console.log(`Page ${pageNo}: Collected ${filteredJobs.length} jobs after filtering`);
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForTimeout(randomDelay(2000, 5000));
+        await page.waitForSelector('.ad', { timeout: 10000 });
+      } catch (e) {
+        console.error(`Failed to load or parse page ${pageNo} for category ${category}: ${e.message}`);
+        await context.close();
+        continue;
+      }
 
-    await context.close();
-    await new Promise(r => setTimeout(r, randomDelay(2000, 5000)));
+      const jobs = await page.evaluate((category) => {
+        const jobItems = [];
+        const ads = document.querySelectorAll('.ad');
+        ads.forEach(ad => {
+          const linkEl = ad.querySelector('a.link');
+          const link = linkEl ? 'https://www.mourjan.com' + linkEl.getAttribute('href') : '';
+
+          const contentEl = ad.querySelector('.content');
+          const description = contentEl ? contentEl.innerText.trim() : '';
+
+          // Title: first sentence or up to first period, or first 50 chars as fallback
+          let title = '';
+          if (description) {
+            const match = description.match(/^.*?[.!\n]/);
+            title = match ? match[0].trim() : description.slice(0, 50);
+          }
+
+          // Posting time: last div inside .box.hint
+          let postingTime = '';
+          const hintBox = ad.querySelector('.box.hint');
+          if (hintBox) {
+            const hintDivs = hintBox.querySelectorAll('div');
+            if (hintDivs.length > 1) {
+              postingTime = hintDivs[hintDivs.length - 1].innerText.trim();
+            }
+          }
+
+          jobItems.push({
+            title,
+            postingTime,
+            description,
+            link,
+            category
+          });
+        });
+        return jobItems;
+      }, category); // Pass category as argument here
+
+      // Filter jobs by time using the parsed postingTime
+      const filteredJobs = jobs.filter(job => isWithinTimeframe(job.postingTime, time));
+
+      allJobs = allJobs.concat(filteredJobs);
+      console.log(`Category ${category} Page ${pageNo}: Collected ${filteredJobs.length} jobs after filtering`);
+
+      await context.close();
+      await new Promise(r => setTimeout(r, randomDelay(2000, 5000)));
+    }
   }
 
   await browser.close();

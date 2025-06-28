@@ -21,6 +21,9 @@ const getScraperForWebsite = (url) => {
   if (url.includes('bayt.com')) {
     return require('./scrapers/bayt');
   }
+  if (url.includes('naukrigulf.com')) {
+    return require('./scrapers/naukarigulf');
+  }
   throw new Error('No scraper found for this website');
 };
 
