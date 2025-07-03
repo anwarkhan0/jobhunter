@@ -29,11 +29,11 @@ function isWithinTimeframe(postTime, time) {
 module.exports = async (time) => {
   const browser = await chromium.launch({ headless: true });
   let allJobs = [];
+  let shouldStop = false;
 
-  for (let pageNo = 1; pageNo <= 1; pageNo++) {
+  for (let pageNo = 1; pageNo <= 100 && !shouldStop; pageNo++) { // set a reasonable max page
     const url = `https://www.expatriates.com/scripts/search/search.epl?page=${pageNo}&q=&category_id=50&region_name=Saudi+Arabia&region_id=49&ads=1`;
 
-    // Set a random user agent for each request
     const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
     const context = await browser.newContext({
       userAgent,
@@ -41,7 +41,6 @@ module.exports = async (time) => {
     });
     const page = await context.newPage();
 
-    // Set some common headers
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
@@ -54,7 +53,7 @@ module.exports = async (time) => {
     } catch (e) {
       console.error(`Failed to load or parse page ${pageNo}: ${e.message}`);
       await context.close();
-      continue;
+      break;
     }
 
     const jobs = await page.evaluate(() => {
@@ -79,7 +78,15 @@ module.exports = async (time) => {
     });
 
     // Filter jobs by time
-    const filteredJobs = jobs.filter(job => isWithinTimeframe(job.postTime, time));
+    const filteredJobs = [];
+    for (const job of jobs) {
+      if (isWithinTimeframe(job.postTime, time)) {
+        filteredJobs.push(job);
+      } else {
+        shouldStop = true; // Found a job older than filter, stop scraping
+        break;
+      }
+    }
 
     allJobs = allJobs.concat(filteredJobs);
     console.log(`Page ${pageNo}: Collected ${filteredJobs.length} jobs after filtering`);

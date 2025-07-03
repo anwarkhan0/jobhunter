@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, FileText, FileSpreadsheet, Briefcase, ExternalLink } from "lucide-react"
+import { Search, FileText, FileSpreadsheet, Briefcase, ExternalLink, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -45,14 +45,43 @@ export default function JobSearchApp() {
   const [selectedSites, setSelectedSites] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [results, setResults] = useState<JobSite[]>([])
+  const [rawResults, setRawResults] = useState<JobSite[]>([]) // <-- Store unfiltered results
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [progress, setProgress] = useState(0)
   const [total, setTotal] = useState(1)
   const [timeFilter, setTimeFilter] = useState<string>("")
 
+  // Reset button handler
+  const handleReset = () => {
+    setSelectedSites([])
+    setSearchQuery("")
+    setResults([])
+    setRawResults([])
+    setIsLoading(false)
+    setHasSearched(false)
+    setProgress(0)
+    setTotal(1)
+    setTimeFilter("")
+  }
+
   const handleSiteToggle = (siteId: string) => {
     setSelectedSites((prev) => (prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]))
+  }
+
+  // Client-side filter for searchQuery
+  const filterResults = (allResults: JobSite[], query: string) => {
+    if (!query.trim()) return allResults
+    const lower = query.toLowerCase()
+    return allResults.map(site => ({
+      ...site,
+      jobs: site.jobs.filter(job =>
+        job.title.toLowerCase().includes(lower) ||
+        job.company.toLowerCase().includes(lower) ||
+        job.location.toLowerCase().includes(lower) ||
+        (job.description && job.description.toLowerCase().includes(lower))
+      ),
+    })).filter(site => site.jobs.length > 0) // Only include sites with matching jobs
   }
 
   const handleSearch = async () => {
@@ -121,6 +150,7 @@ export default function JobSearchApp() {
             })) : [],
           }));
           setResults(mappedResults)
+          setRawResults(mappedResults) // <-- Also update raw results
         }
 
         if (data.status === "done") break
@@ -146,6 +176,7 @@ export default function JobSearchApp() {
       }));
 
       setResults(mappedResults)
+      setRawResults(mappedResults) // <-- Also update raw results
       toast({
         title: "Search completed",
         description: `Found jobs from ${mappedResults.length} sites.`,
@@ -315,6 +346,14 @@ export default function JobSearchApp() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Reset Button */}
+        <div className="text-center mb-4">
+          <Button variant="destructive" onClick={handleReset} disabled={isLoading}>
+            <XCircle className="h-4 w-4 mr-2" />
+            Reset Search
+          </Button>
+        </div>
 
         {/* Progress Bar */}
         {isLoading && (
