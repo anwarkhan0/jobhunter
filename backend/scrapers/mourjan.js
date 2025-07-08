@@ -6,14 +6,24 @@ const USER_AGENTS = [
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
 ];
 
+// const CATEGORIES = [
+//   "secreterial", "accounting", "sales-and-marketing", "tourist-and-restaurants", "designer", "teaching",
+//   "differ-jobs", "engineering", "programming", "fine-arts", "beauty-care", "drivers", "labors", "technicians",
+//   "medicine-and-nursing", "law", "human-resources", "partnership", "web-designers", "information-technology",
+//   "customer-service", "translators", "fitness", "landscaping", "fashion", "editorial", "administration",
+//   "public-relations", "ticketing", "guards", "housemaids", "cleaning-workers", "child-care", "delivery",
+//   "audio-visual", "ac-technicians", "tailors", "construction", "employee", "data-entry", "craftsmen"
+// ];
+
+
 const CATEGORIES = [
-  "secreterial", "accounting", "sales-and-marketing", "tourist-and-restaurants", "designer", "teaching",
-  "differ-jobs", "engineering", "programming", "fine-arts", "beauty-care", "drivers", "labors", "technicians",
-  "medicine-and-nursing", "law", "human-resources", "partnership", "web-designers", "information-technology",
-  "customer-service", "translators", "fitness", "landscaping", "fashion", "editorial", "administration",
-  "public-relations", "ticketing", "guards", "housemaids", "cleaning-workers", "child-care", "delivery",
-  "audio-visual", "ac-technicians", "tailors", "construction", "employee", "data-entry", "craftsmen"
+   "accounting", "sales-and-marketing", "tourist-and-restaurants","teaching",
+  "differ-jobs", "engineering", "programming", "drivers", "labors", "technicians", "information-technology",
+  "customer-service", "administration",
+   "ticketing", "guards", "housemaids", "cleaning-workers", "delivery",
+  "audio-visual", "employee", "data-entry", 
 ];
+
 
 function randomDelay(min = 2000, max = 6000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -67,7 +77,8 @@ module.exports = async (time) => {
   let allJobs = [];
 
   for (const category of CATEGORIES) {
-    for (let pageNo = 1; pageNo <= 1; pageNo++) { // Increase pageNo if you want more pages per category
+    let shouldStop = false; // <-- Add this flag for each category
+    for (let pageNo = 1; pageNo <= 100 && !shouldStop; pageNo++) {
       const url = `https://www.mourjan.com/sa/${category}/vacancies/en/${pageNo}/`;
 
       const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
@@ -128,16 +139,24 @@ module.exports = async (time) => {
           });
         });
         return jobItems;
-      }, category); // Pass category as argument here
+      }, category);
 
-      // Filter jobs by time using the parsed postingTime
-      const filteredJobs = jobs.filter(job => isWithinTimeframe(job.postingTime, time));
+      // Filter jobs by time and stop if any job is older than the filter
+      for (const job of jobs) {
+        if (isWithinTimeframe(job.postingTime, time)) {
+          allJobs.push(job);
+        } else {
+          shouldStop = true;
+          break;
+        }
+      }
 
-      allJobs = allJobs.concat(filteredJobs);
-      console.log(`Category ${category} Page ${pageNo}: Collected ${filteredJobs.length} jobs after filtering`);
+      console.log(`Category ${category} Page ${pageNo}: Collected jobs, shouldStop=${shouldStop}`);
 
       await context.close();
       await new Promise(r => setTimeout(r, randomDelay(2000, 5000)));
+
+      if (shouldStop) break; // Stop paginating this category
     }
   }
 
