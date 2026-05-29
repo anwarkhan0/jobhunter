@@ -156,7 +156,7 @@ module.exports = async (time) => {
     }
     lastFirstJobId = firstJobId;
 
-    allJobs.push(job);
+    allJobs.push(...jobs);
 
     // Filter jobs by time and stop if any job is older than the filter
     // for (const job of jobs) {
